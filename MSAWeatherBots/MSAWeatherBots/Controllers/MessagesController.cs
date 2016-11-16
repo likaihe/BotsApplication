@@ -8,6 +8,7 @@ using System.Web.Http.Description;
 using Microsoft.Bot.Connector;
 using Newtonsoft.Json;
 
+
 namespace MSAWeatherBots
 {
     [BotAuthentication]
@@ -22,12 +23,38 @@ namespace MSAWeatherBots
             if (activity.Type == ActivityTypes.Message)
             {
                 ConnectorClient connector = new ConnectorClient(new Uri(activity.ServiceUrl));
-                // calculate something for us to return
-                int length = (activity.Text ?? string.Empty).Length;
 
-                // return our reply to the user
-                Activity reply = activity.CreateReply($"You sent {activity.Text} which was {length} characters");
-                await connector.Conversations.ReplyToActivityAsync(reply);
+
+                var userMessage = activity.Text;
+
+
+                StateClient stateClient = activity.GetStateClient();
+                BotData userData = await stateClient.BotState.GetUserDataAsync(activity.ChannelId, activity.From.Id);
+
+                bool isWeatherRequest = false;
+                string endOutput = "Hello";
+                // userData.SetProperty<bool>("SentGreeting", false);
+
+                // calculate something for us to return
+                if (userData.GetProperty<bool>("SentGreeting"))
+                {
+                    endOutput = "Hello again";
+                }
+                else
+                {
+                    userData.SetProperty<bool>("SentGreeting", true);
+                    await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+                }
+
+                if (!isWeatherRequest)
+                {
+                    // return our reply to the user
+                    Activity infoReply = activity.CreateReply(endOutput);
+
+                    await connector.Conversations.ReplyToActivityAsync(infoReply);
+
+                }
+
             }
             else
             {
